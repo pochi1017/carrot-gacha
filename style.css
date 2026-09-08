@@ -426,3 +426,97 @@ body.shake .result { animation: shake .5s ease .1s; }
 @media (prefers-reduced-motion: reduce) {
   .draw .carrot, .draw .halo, .rays, .confetti, .sp { animation: none !important; }
 }
+
+/* ─── 등급별 빛 폭발 (영상 마지막, 당근 위치) ─── */
+.burst { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+.burst i { position: absolute; left: var(--bx); top: var(--by); will-change: transform, opacity; }
+
+/* 중앙 섬광 */
+.b-flash {
+  width: 120vmax; height: 120vmax;
+  background: radial-gradient(circle, #fff 0%, var(--fc, rgba(255,255,255,.55)) 16%, transparent 52%);
+  transform: translate(-50%, -50%) scale(.3); opacity: 0;
+  animation: bFlash var(--fdur, .9s) ease-out forwards;
+  mix-blend-mode: screen;
+}
+@keyframes bFlash { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 14% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+
+/* 밝은 코어 */
+.b-core {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--cc, #fff) 40%, transparent 72%);
+  transform: translate(-50%,-50%) scale(.2); opacity: 0;
+  animation: bCore var(--fdur, .9s) ease-out forwards; mix-blend-mode: screen;
+}
+@keyframes bCore { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 18% { opacity: 1; transform: translate(-50%,-50%) scale(1.4); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(2.2); } }
+
+/* 방사형 광선 */
+.b-rays {
+  width: 200vmax; height: 200vmax;
+  background: var(--rays, repeating-conic-gradient(from 0deg, rgba(255,255,255,.5) 0deg 4deg, transparent 4deg 14deg));
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 22%, transparent 46%);
+          mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 22%, transparent 46%);
+  transform: translate(-50%,-50%) scale(.2) rotate(0deg); opacity: 0;
+  animation: bRays var(--rdur, 1s) ease-out forwards; mix-blend-mode: screen;
+}
+.b-rays2 { animation-direction: reverse; opacity: 0; }
+@keyframes bRays {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.2) rotate(0deg); }
+  18% { opacity: .95; }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.25) rotate(var(--spin, 30deg)); }
+}
+
+/* 충격파 링 */
+.b-ring {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 4px solid var(--rc, rgba(255,255,255,.9));
+  transform: translate(-50%,-50%) scale(.1); opacity: 0;
+  animation: bRing var(--ringdur, 1s) cubic-bezier(.2,.7,.3,1) var(--rd, 0s) forwards;
+}
+@keyframes bRing {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.1); border-width: 6px; }
+  12% { opacity: .95; }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(var(--ringmax, 9)); border-width: 1px; }
+}
+
+/* 튀어나가는 반짝임 */
+.b-spark {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 28%, var(--c, #fff) 30% 64%, transparent 66%);
+  transform: translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(0); opacity: 0;
+  animation: bSpark var(--t, 1s) ease-out forwards;
+  filter: drop-shadow(0 0 6px var(--c, #fff)); mix-blend-mode: screen;
+}
+@keyframes bSpark {
+  0% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(0); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(var(--s)); }
+}
+
+/* 레어 (초록) */
+.burst-rare {
+  --fc: rgba(158,220,140,.5); --cc: #CFF0BE; --rc: rgba(126,211,122,.9);
+  --rays: repeating-conic-gradient(from 0deg, rgba(126,211,122,.5) 0deg 4deg, transparent 4deg 15deg);
+  --spin: 22deg; --fdur: .85s; --rdur: .95s; --ringdur: .95s; --ringmax: 8;
+}
+/* 슈퍼레어 (골드) */
+.burst-superRare {
+  --fc: rgba(255,205,90,.55); --cc: #FFF0C8; --rc: rgba(255,190,80,.95);
+  --rays: repeating-conic-gradient(from 0deg, rgba(255,200,90,.62) 0deg 3deg, transparent 3deg 12deg);
+  --spin: 40deg; --fdur: 1s; --rdur: 1.15s; --ringdur: 1.1s; --ringmax: 10;
+}
+.burst-superRare .b-flash { width: 150vmax; height: 150vmax; }
+/* 울트라레어 (무지개) */
+.burst-ultraRare {
+  --fc: rgba(255,255,255,.85); --cc: #fff; --rc: rgba(255,255,255,.95);
+  --rays: repeating-conic-gradient(from 0deg, #FF7A9A 0deg 6deg, #FFB35A 6deg 12deg, #FFE156 12deg 18deg, #7ED37A 18deg 24deg, #6AB8FF 24deg 30deg, #B99AEB 30deg 36deg);
+  --spin: 90deg; --fdur: 1.2s; --rdur: 1.55s; --ringdur: 1.5s; --ringmax: 13;
+}
+.burst-ultraRare .b-flash { width: 220vmax; height: 220vmax; }
+.burst-ultraRare .b-rays { opacity: 0; -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,.6) 26%, transparent 52%); mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,.6) 26%, transparent 52%); }
+.burst-ultraRare .b-ring { border-width: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .b-rays, .b-rays2 { animation-duration: .6s; }
+  .b-spark { display: none; }
+}

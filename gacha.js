@@ -30,6 +30,7 @@
     tension: $('#tension'),
     result: $('#result'),
     fx: $('#fx'),
+    burst: $('#burst'),
     scene: $('.card-scene'),
     card: $('#card'),
     cardBack: $('#cardBack'),
@@ -132,6 +133,97 @@
   }
   function canStart() { return state === State.IDLE || state === State.RESULT; }
 
+  /* audio (Web Audio synth, no external files) */
+  var zzAC = null, zzMaster = null;
+  function ensureAudio() {
+    try {
+      if (!zzAC) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        zzAC = new AC();
+        zzMaster = zzAC.createGain();
+        zzMaster.gain.value = 0.5;
+        zzMaster.connect(zzAC.destination);
+      }
+      if (zzAC.state === 'suspended') zzAC.resume();
+    } catch (e) {}
+  }
+  function bell(freq, at, dur, peak) {
+    var t = zzAC.currentTime + at;
+    [[1, 'triangle', peak], [2.01, 'sine', peak * 0.35], [3.02, 'sine', peak * 0.14]].forEach(function (h) {
+      var o = zzAC.createOscillator(), g = zzAC.createGain();
+      o.type = h[1]; o.frequency.value = freq * h[0];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(h[2], t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(zzMaster); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  function sweep(f0, f1, at, dur, peak, type) {
+    var t = zzAC.currentTime + at;
+    var o = zzAC.createOscillator(), g = zzAC.createGain();
+    o.type = type || 'sawtooth';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(zzMaster); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function shimmer(at, dur, peak) {
+    var t = zzAC.currentTime + at;
+    var len = Math.floor(zzAC.sampleRate * dur);
+    var buf = zzAC.createBuffer(1, len, zzAC.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = zzAC.createBufferSource(); src.buffer = buf;
+    var hp = zzAC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
+    var g = zzAC.createGain(); g.gain.value = peak;
+    src.connect(hp); hp.connect(g); g.connect(zzMaster); src.start(t); src.stop(t + dur + 0.02);
+  }
+  function playBurstSound(grade) {
+    ensureAudio();
+    if (!zzAC || zzAC.state !== 'running') return;
+    if (grade === 'rare') {
+      bell(1174.7, 0, 0.6, 0.28); bell(1568.0, 0.02, 0.55, 0.20); shimmer(0.02, 0.3, 0.05);
+    } else if (grade === 'superRare') {
+      [1046.5, 1318.5, 1568.0].forEach(function (f, i) { bell(f, i * 0.09, 0.6, 0.26); });
+      bell(2093.0, 0.28, 0.7, 0.16); shimmer(0.05, 0.5, 0.07);
+    } else {
+      var t = zzAC.currentTime;
+      var o = zzAC.createOscillator(), g = zzAC.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.35);
+      g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      o.connect(g); g.connect(zzMaster); o.start(t); o.stop(t + 0.5);
+      sweep(220, 1400, 0, 0.5, 0.18, 'sawtooth');
+      [1046.5, 1318.5, 1568.0, 2093.0].forEach(function (f, i) { bell(f, 0.28 + i * 0.05, 1.2, 0.22); });
+      shimmer(0.3, 0.9, 0.10); shimmer(0.7, 0.7, 0.07);
+    }
+  }
+
+  /* grade-based light burst at video end (carrot position) */
+  function buildBurst(grade) {
+    var b = els.burst;
+    var r = els.video.getBoundingClientRect();
+    b.style.setProperty('--bx', (r.left + r.width * 0.31) + 'px');
+    b.style.setProperty('--by', (r.top + r.height * 0.33) + 'px');
+    b.className = 'burst burst-' + grade;
+    var cfg = { rare: { rings: 1, sparks: 12, d: 110 }, superRare: { rings: 2, sparks: 18, d: 150 }, ultraRare: { rings: 3, sparks: 30, d: 200 } }[grade];
+    var cols = grade === 'ultraRare' ? ['#FF7A9A', '#FFB35A', '#FFE156', '#7ED37A', '#6AB8FF', '#B99AEB']
+      : grade === 'superRare' ? ['#FFE0A0', '#FFCF5A', '#FFA020', '#FFF3D6']
+      : ['#BFE9B0', '#7ED37A', '#4F7A3A', '#E6F6DD'];
+    var html = '<i class="b-flash"></i><i class="b-core"></i><i class="b-rays"></i>';
+    if (grade !== 'rare') html += '<i class="b-rays b-rays2"></i>';
+    for (var k = 0; k < cfg.rings; k++) html += '<i class="b-ring" style="--rd:' + (k * 0.16).toFixed(2) + 's"></i>';
+    for (var n = 0; n < cfg.sparks; n++) {
+      var a2 = (360 / cfg.sparks) * n + (Math.random() * 18 - 9);
+      var d2 = cfg.d + Math.random() * 130;
+      html += '<i class="b-spark" style="--a:' + a2.toFixed(1) + 'deg;--d:' + d2.toFixed(0) + 'px;--t:' + (0.7 + Math.random() * 0.7).toFixed(2) + 's;--s:' + (0.7 + Math.random()).toFixed(2) + ';--c:' + cols[n % cols.length] + '"></i>';
+    }
+    b.innerHTML = html;
+    b.hidden = false;
+  }
+  function clearBurst() { els.burst.hidden = true; els.burst.innerHTML = ''; els.burst.className = 'burst'; }
+
   /* ───────── 뽑기 흐름 ───────── */
   var current = null;       // 이번 뽑기 결과 { carrot, grade, isNew, count }
   var revealed = false;     // ended 가 두 번 오거나 fallback 과 겹쳐도 한 번만
@@ -185,16 +277,25 @@
     revealed = true;
     setState(State.REVEALING);
 
-    /* 영상 마지막 프레임을 잠시 유지한 채 짧은 긴장감 */
-    els.tension.hidden = false;
-    els.tension.classList.add('on');
-
-    later(function () {
-      els.stage.classList.remove('on');
-      els.tension.classList.remove('on');
-      showResult();
-    }, 700);
-    later(function () { els.stage.hidden = true; els.tension.hidden = true; }, 1100);
+    var gk = current.carrot.grade;
+    if (gk === 'rare' || gk === 'superRare' || gk === 'ultraRare') {
+      /* 레어 이상: 영상 마지막 프레임 위, 당근 위치에서 빛이 터지고 효과음이 난다 */
+      playBurstSound(gk);
+      buildBurst(gk);
+      var hold = gk === 'ultraRare' ? 1600 : gk === 'superRare' ? 1200 : 1000;
+      later(function () { els.stage.classList.remove('on'); clearBurst(); showResult(); }, hold);
+      later(function () { els.stage.hidden = true; els.tension.hidden = true; }, hold + 420);
+    } else {
+      /* 일반: 짧은 긴장감 후 결과 */
+      els.tension.hidden = false;
+      els.tension.classList.add('on');
+      later(function () {
+        els.stage.classList.remove('on');
+        els.tension.classList.remove('on');
+        showResult();
+      }, 700);
+      later(function () { els.stage.hidden = true; els.tension.hidden = true; }, 1100);
+    }
   }
 
   /* ───────── 결과 카드 ───────── */
@@ -321,13 +422,14 @@
 
   /* ───────── 이벤트 ───────── */
   els.drawBtn.addEventListener('click', function () {
+    ensureAudio();
     if (!startDraw()) {
       if (state === State.VIDEO_PLAYING || state === State.DRAWING || state === State.REVEALING) {
         els.drawBtn.classList.remove('nudge'); void els.drawBtn.offsetWidth; els.drawBtn.classList.add('nudge');
       }
     }
   });
-  els.againBtn.addEventListener('click', function () { startDraw(); });
+  els.againBtn.addEventListener('click', function () { ensureAudio(); startDraw(); });
   els.okBtn.addEventListener('click', function () { if (state === State.RESULT) { hideResult(false); setState(State.IDLE); } });
   els.resultDexBtn.addEventListener('click', function () { if (state === State.RESULT) { hideResult(false); setState(State.IDLE); openDex(); } });
   els.dexBtn.addEventListener('click', function () { if (els.dex.hidden) openDex(); else closeDex(); });
