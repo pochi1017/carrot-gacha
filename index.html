@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="only light">
+  <title>포치의 당근 뽑기</title>
+  <link rel="icon" href="assets/carrots/carrot-01-normal.png" type="image/png">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preload" as="video" href="assets/pochi-carrot-pull.mp4" type="video/mp4">
+</head>
+<body data-gacha="IDLE">
+
+  <!-- 상단 바 -->
+  <header class="top">
+    <div class="brand">
+      <img src="assets/carrots/carrot-02-mini.png" alt="" width="34" height="34" style="width:34px;height:34px;object-fit:contain">
+      <div>
+        <h1>포치의 당근 뽑기</h1>
+        <small>작고 소중한 포동이 당근 10종을 모아보세요</small>
+      </div>
+    </div>
+    <button class="pill" id="dexBtn" type="button" aria-haspopup="dialog">
+      📖 당근 도감 <span class="cnt" id="dexCount">0/10</span>
+    </button>
+  </header>
+
+  <!-- 메인 화면 -->
+  <main class="main" id="main">
+    <h2>밭에 심어둔 당근, 뽑아볼까요?</h2>
+    <p class="lead">세상에 이런 당근도? 무엇이 나올지는 뽑아봐야 알아요.</p>
+
+    <button class="draw" id="drawBtn" type="button" aria-label="당근 뽑기" aria-busy="false">
+      <span class="halo"></span>
+      <span class="mound"></span>
+      <img class="carrot" src="assets/carrots/carrot-01-normal.png" alt="">
+      <span class="label">🥕 당근 뽑기</span>
+    </button>
+
+    <p class="hint">당근을 눌러 뽑아보세요</p>
+    <div class="rates" id="rates" aria-label="등급별 확률"></div>
+  </main>
+
+  <!-- 영상 스테이지 -->
+  <section class="stage" id="stage" hidden aria-live="polite">
+    <div class="glow"></div>
+    <div class="video-wrap">
+      <video id="pullVideo" playsinline muted preload="auto"></video>
+    </div>
+    <div class="tension" id="tension" hidden>두근두근…</div>
+  </section>
+
+  <!-- 결과 -->
+  <section class="result" id="result" hidden role="dialog" aria-label="뽑기 결과">
+    <div class="fx" id="fx"></div>
+
+    <div class="card-scene">
+      <div class="card" id="card">
+        <div class="face back" id="cardBack">
+          <div class="q">?</div>
+          <div class="back-grade"></div>
+          <div class="back-stars stars"></div>
+        </div>
+        <div class="face front" id="cardFront">
+          <div class="grade-ribbon">
+            <span id="resultGrade">일반</span>
+            <span class="stars" id="resultStars"></span>
+          </div>
+          <div class="carrot-box">
+            <img id="resultCarrot" alt="">
+          </div>
+          <div class="name-row">
+            <span class="no" id="resultNo">No.01</span>
+            <span class="name" id="resultName">보통 당근</span>
+          </div>
+          <p class="desc" id="resultDesc"></p>
+          <div class="tag new" id="resultTag">NEW!</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-actions" id="resultActions">
+      <button class="btn" id="resultDexBtn" type="button">📖 도감 보기</button>
+      <button class="btn accent" id="againBtn" type="button">🥕 다시 뽑기</button>
+      <button class="btn primary" id="okBtn" type="button">확인</button>
+    </div>
+  </section>
+
+  <!-- 도감 -->
+  <section class="dex" id="dex" hidden role="dialog" aria-label="당근 도감">
+    <div class="dex-panel">
+      <div class="dex-head">
+        <h3>📖 당근 도감</h3>
+        <button class="x" id="dexClose" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div class="dex-prog">
+        <strong id="dexProgressText">10종 중 0종 수집</strong>
+        <div class="bar"><i id="dexProgressBar"></i></div>
+        <small id="dexDraws">총 0번 뽑음</small>
+      </div>
+      <ul class="dex-grid" id="dexGrid"></ul>
+      <div class="dex-foot">
+        <button class="link" id="dexReset" type="button">도감 초기화</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="gacha-data.js"></script>
+  <script>
+    /* 메인 화면 확률 표시 — 데이터 정본을 그대로 읽는다 */
+    (function () {
+      var g = window.GACHA_DATA.grades, total = 0, k;
+      for (k in g) total += g[k].rate;
+      var html = '';
+      for (k in g) {
+        var pct = g[k].rate / total * 100;
+        html += '<span style="--g-color:' + g[k].color + ';--g-bg:' + g[k].bg + '">' + g[k].label + ' ' + (Math.round(pct * 10) / 10) + '%</span>';
+      }
+      document.getElementById('rates').innerHTML = html;
+    })();
+  </script>
+  <script src="gacha.js"></script>
+</body>
+</html>
