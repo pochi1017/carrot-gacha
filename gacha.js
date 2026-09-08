@@ -157,14 +157,20 @@
 
     var v = els.video;
     v.playbackRate = FAST ? 4 : 1;
-    /* 음소거로 재생해야 브라우저 자동재생 정책에 막혀 첫 프레임에 멈추지 않는다
-       (소리 있는 영상 자동재생은 대부분 차단됨 → 멈춘 이미지처럼 보임) */
-    v.muted = true;
+    /* 뽑기는 사용자가 당근을 직접 클릭해 시작하므로 소리 있는 재생이 허용된다.
+       혹시 자동재생이 막히는 환경이면 음소거로라도 재생해 첫 프레임에 멈추지 않게 한다. */
+    v.muted = false;
+    v.volume = 1;
     try { v.currentTime = 0; } catch (e) {}
     var p = v.play();
     if (p && p.then) {
       p.then(function () { setState(State.VIDEO_PLAYING); })
-       .catch(function () { onVideoEnded(); });   /* 재생이 정말 안 되면 결과로 넘어간다 */
+       .catch(function () {
+         v.muted = true;
+         var p2 = v.play();
+         if (p2 && p2.then) p2.then(function () { setState(State.VIDEO_PLAYING); }).catch(function () { onVideoEnded(); });
+         else setState(State.VIDEO_PLAYING);
+       });
     } else {
       setState(State.VIDEO_PLAYING);
     }
